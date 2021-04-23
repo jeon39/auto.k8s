@@ -1,0 +1,20 @@
+---
+- name: Setup Kubenetes to each node
+  hosts: all
+  connection: local
+  serial: 1
+  gather_facts: no
+  vars:
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - debug: var=ansible_host
+
+    - name: copy public key of root to each node
+      become: false
+      command: "sudo sshpass -p {{ ansible_password }} ssh-copy-id -i ~/.ssh/id_rsa.pub vagrant@{{ item }} -f -o StrictHostKeyChecking=no"
+      with_items:
+        - "{{ ansible_host }}"
+      run_once: true
+    

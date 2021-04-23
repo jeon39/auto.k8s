@@ -1,0 +1,99 @@
+---
+- name: Setup ansible control node
+  hosts: localhost
+  become: no
+  become_user: vagrant
+  gather_facts: no
+  vars:
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - debug: var=ansible_host
+
+    - name: copy sample
+      copy:
+        src: /home/vagrant/kubespray/inventory/sample/
+        dest: /home/vagrant/kubespray/inventory/my-k8s
+        #force: yes
+
+    - name: empty inventory file(hosts)
+      file:
+        state: file
+        path: /home/vagrant/kubespray/inventory/my-k8s/hosts
+        state: touch
+      run_once: true
+
+    - name: write inventory file(hosts)
+      blockinfile:
+        path: /home/vagrant/kubespray/inventory/my-k8s/hosts
+        block: |
+          [all]
+          node01 ansible_host=node01 ip=192.168.2.22 etcd_member_name=etcd1
+          node02 ansible_host=node02 ip=192.168.2.23 etcd_member_name=etcd2
+          node03 ansible_host=node03 ip=192.168.2.24 etcd_member_name=etcd3
+          node04 ansible_host=node04 ip=192.168.2.25
+
+          [kube-master]
+          node01
+         
+          [etcd]
+          node01
+          node02
+          node03
+          
+          [kube-node]
+          node02
+          node03
+          node04
+          
+          [k8s-cluster:children]
+          kube-master
+          kube-node
+
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
+
+    - name: set bashrc file
+      lineinfile:
+        path: /home/vagrant/.bashrc
+        line: "{{ item }}"
+      with_items:
+        - "alias ans='ansible'"
+        - "alias anp='ansible-playbook'"
+        - "alias ang='ansible-galaxy'"
+
+    - name: install sshpass
+      command: "apt install -y sshpass"
+      run_once: true
+
+    - name: ssh-keygen for vagrant user
+      become: true
+      command: "ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ''"
+      ignore_errors: true
+      run_once: true
+
+    - name: key-scan with hostname
+      command: /usr/bin/ssh-keyscan -t ecdsa {{ ansible_host }}
+      register: key_hostname
+
+    - name: put key_hostname on known_hosts
+      lineinfile:
+        path: ~/ssh/known_hosts
+        line: "{{ item }}"
+        create: true
+      with_items:
+        - "{{ key_hostname.stdout_lines }}"
+
+    - name: key-scan with hostip
+      command: /usr/bin/ssh-keyscan -t ecdsa {{ ansible_host }}
+      register: key_hostip
+
+    - name: put key_hostip on known_hosts
+      lineinfile:
+        path: ~/ssh/known_hosts
+        line: "{{ item }}"
+        create: true
+      with_items:
+        - "{{ key_hostip.stdout_lines }}"
+

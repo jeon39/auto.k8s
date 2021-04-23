@@ -1,0 +1,151 @@
+---
+- name: Setup ansible control node
+  hosts: localhost
+  become: no
+  become_user: vagrant
+  gather_facts: no
+  vars:
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - debug: var=ansible_host
+
+    #- name: donwload kubespray
+    #  git:
+    #    repo: https://github.com/kubernetes-sigs/kubespray.git
+    #    dest: /home/vagrant/kubespray
+
+    - name: copy sample
+      copy:
+        src: /home/vagrant/kubespray/inventory/sample/
+        dest: /home/vagrant/kubespray/inventory/my-k8s
+        #force: yes
+
+    - name: empty inventory file(hosts)
+      file:
+        state: file
+        path: /home/vagrant/kubespray/inventory/my-k8s/hosts
+        state: touch
+      run_once: true
+
+    - name: write inventory file(hosts)
+      blockinfile:
+        path: /home/vagrant/kubespray/inventory/my-k8s/hosts
+        block: |
+          [all]
+          node01 ansible_host=node01 ip=192.168.2.22 etcd_member_name=etcd1
+          node02 ansible_host=node02 ip=192.168.2.23 etcd_member_name=etcd2
+          node03 ansible_host=node03 ip=192.168.2.24 etcd_member_name=etcd3
+          node04 ansible_host=node04 ip=192.168.2.25
+
+          [kube-master]
+          node01
+         
+          [etcd]
+          node01
+          node02
+          node03
+          
+          [kube-node]
+          node02
+          node03
+          node04
+          
+          [k8s-cluster:children]
+          kube-master
+          kube-node
+
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
+
+    - name: set bashrc file
+      lineinfile:
+        path: /home/vagrant/.bashrc
+        line: "{{ item }}"
+      with_items:
+        - "alias ans='ansible'"
+        - "alias anp='ansible-playbook'"
+        - "alias ang='ansible-galaxy'"
+
+    - name: install sshpass
+      command: "apt install -y sshpass"
+      run_once: true
+
+    - name: ssh-keygen for vagrant user
+      become: true
+      command: "ssh-keygen -b 2048 -t rsa -f ~/.ssh/id_rsa -q -N ''"
+      ignore_errors: true
+      run_once: true
+
+    #- name: key scan
+    #  command: /usr/bin/ssh-keyscan -t ecdsa {{ ansible_host }}
+    #  register: keyscan
+
+    #- name: known_hosts
+    #  lineinfile:
+    #    path: /home/vagrant/.ssh/known_hosts
+    #    line: "{{ item }}"
+    #    create: yes
+    #  with_items:
+    #    - "{{ keyscan.stdout_lines }}"
+
+    #- name: install requirements
+    #  become: true
+    #  pip
+    #    executable: /usr/bin/pip3
+    #    chdir: /home/vagrant/kubespray
+    #    requirements: requirements.txt
+    #  run_once: true
+
+      #- name: set inventory
+
+
+    #- name: Create New Folder
+    #  file:
+    #    state: directory
+    #    path: "/home/vagrant/kubespray/inventory/{{ item }}"
+    #  with_items:
+    #    - seongj
+
+    #- name: Make Directory
+    #  file:
+    #    state: directory
+    #    path: /home/vagrant/kubespray
+    #    owner: vagrant
+    #    group: vagrant
+    
+    #- name: Download Kubspray release sources
+    #  git:
+    #    repo: https://github.com/kubernetes-sigs/kubespray
+    #    dest: /home/vagrant/kubespray
+    
+    #- name: Install kubespray utilites with requirements.txt
+    #  pip:
+    #    executable: pip3
+    #    requirements: requirements.txt
+    #    chdir: /home/vagrant/kubespray
+    #    extra_args: -r
+    #  run_once: true
+
+    #- name: Instal requirements
+    #  command: pip3 install /home/vagrant/kubespray
+
+
+    #- name: Create New Folder
+    #  file:
+    #    state: directory
+    #    path: "/home/vagrant/kubespray/inventory/{{ item }}"
+    #    owner: vagrant
+    #    group: vagrant
+    #  with_items:
+    #    - seongj
+
+    #- name: Copy Kubespray Sample
+    #  command: cp -r /home/vagrant/kubespray/inventory/sample/{{ item }}  /home/vagrant/kubespray/inventory/seongj
+    #  with_items:
+    #    - group_vars
+    #    - inventory.ini
+
+    #- name: Change group
+    #  command: "chown -R vagrant:vagrant /home/vagrant/kubespray"

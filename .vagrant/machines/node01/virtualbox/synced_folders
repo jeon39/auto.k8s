@@ -1,0 +1,1 @@
+{"virtualbox":{"/vagrant":{"guestpath":"/vagrant","hostpath":"/work/my_vagrant/iac-k8s","disabled":false,"__vagrantfile":true}}}

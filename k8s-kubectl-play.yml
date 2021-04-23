@@ -1,0 +1,33 @@
+---
+- name: Setup kubectl
+  hosts: kube-master
+  gather_facts: no
+
+  tasks:
+    - debug: var=ansible_host
+
+    - name: create .kube dir
+      #  become: false
+      file:
+        state: directory
+        path: /home/vagrant/.kube
+
+    #- name: create empty file .kube/config
+    #  become: false
+    #  file:
+    #    state: file
+    #    path: ~/.kube/config
+    #    state: touch
+    #  run_once: true
+
+    - name: copy admin.conf -> .kube/config
+      copy:
+        src: /etc/kubernetes/admin.conf
+        remote_src: true
+        dest: /home/vagrant/.kube/config
+        owner: "{{ ansible_user }}"
+        group: "{{ ansible_user }}"
+        mode: 0644
+
+    #- name: chwon .kube/config
+    #  command: "chown $(id -u):${id -g) /home/vagrant/.kube/config"

@@ -1,0 +1,154 @@
+---
+- name: Setup Ansible to each node
+  hosts: all
+  connection: local
+  #become: no
+  #become_user: vagrant
+  #serial: 1
+  gather_facts: no
+  vars:
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - debug: var=ansible_host
+
+    #- name: donwload kubespray
+    #  git:
+    #    repo: https://github.com/kubernetes-sigs/kubespray.git
+    #    dest: /home/vagrant/kubespray
+
+    - name: key scan with host name
+      command: /usr/bin/ssh-keyscan -t ecdsa {{ ansible_host }}
+      register: key_host
+
+    - name: put key_host on known_hosts
+      lineinfile:
+        path: /home/vagrant/.ssh/known_hosts
+        line: "{{ item }}"
+        #create: yes
+      with_items:
+        - "{{ key_host.stdout_lines }}"
+
+    - name: key scan with host ip
+      command: /usr/bin/ssh-keyscan -t ecdsa {{ ip }}
+      register: key_ip
+
+    - name: put key_ip on known_hosts
+      lineinfile:
+        path: /home/vagrant/.ssh/known_hosts
+        line: "{{ item }}"
+        #create: yes
+      with_items:
+        - "{{ key_ip.stdout_lines }}"
+
+    - name: update /etc/ssh/sshd_config
+      lineinfile:
+        path: "/etc/ssh/sshd_config"
+        regexp: '{{ item.from }}'
+        line: '{{ item.to }}'
+      with_items:
+        - { from: 'PasswordAuthentication no', to: 'PasswordAuthentication yes' }
+        - { from: '#PubkeyAuthentication yes', to: 'PubkeyAuthentication yes' }
+        - { from: '#PermitRootLogin prohibit-password', to: 'PermitRootLogin yes' }
+
+
+    #- name: update /etc/ssh/sshd_config, PasswordAuthentication
+    #  connection: ssh
+    #  lineinfile:
+    #    path: /etc/ssh/sshd_config
+    #    regexp: '^PasswordAuthentication no$'
+    #    line: 'PasswordAuthentication yes'
+
+    #- name: update /etc/ssh/sshd_config, PubkeyAuthentication
+    #  connection: ssh
+    #  lineinfile:
+    #    path: /etc/ssh/sshd_config
+    #    regexp: '^#PubkeyAuthentication yes$'
+    #    line: 'PubkeyAuthentication yes'
+
+    - name: update /etc/ssh/sshd_config, PermitRootLogin
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#PermitRootLogin prohibit-password$'
+        line: 'PermitRootLogin yes'
+
+    - name: restart ssh service
+      service:
+        name: ssh
+        state: restarted
+      run_once: true
+
+    #- name: copy ssh private key to each node
+    #  become: true
+    #  connection: ssh
+    #  authorized_key:
+    #    user: vagrant
+    #    state: present
+    #    key: "{{ lookup('file', '/home/vagrant/.ssh/id_rsa.pub') }}"
+    #  ignore_errors: true
+   
+    - name: copy public key to each node
+      command: sshpass -p {{ ansible_password }} ssh-copy-id -i /home/vagrant/.ssh/id_rsa.pub vagrant@{{ item }} -f -o StrictHostKeyChecking=no
+      with_items:
+        - "{{ ansible_host }}"
+    
+    #- name: install requirements
+    #  become: true
+    #  pip
+    #    executable: /usr/bin/pip3
+    #    chdir: /home/vagrant/kubespray
+    #    requirements: requirements.txt
+    #  run_once: true
+
+      #- name: set inventory
+
+
+    #- name: Create New Folder
+    #  file:
+    #    state: directory
+    #    path: "/home/vagrant/kubespray/inventory/{{ item }}"
+    #  with_items:
+    #    - seongj
+
+    #- name: Make Directory
+    #  file:
+    #    state: directory
+    #    path: /home/vagrant/kubespray
+    #    owner: vagrant
+    #    group: vagrant
+    
+    #- name: Download Kubspray release sources
+    #  git:
+    #    repo: https://github.com/kubernetes-sigs/kubespray
+    #    dest: /home/vagrant/kubespray
+    
+    #- name: Install kubespray utilites with requirements.txt
+    #  pip:
+    #    executable: pip3
+    #    requirements: requirements.txt
+    #    chdir: /home/vagrant/kubespray
+    #    extra_args: -r
+    #  run_once: true
+
+    #- name: Instal requirements
+    #  command: pip3 install /home/vagrant/kubespray
+
+
+    #- name: Create New Folder
+    #  file:
+    #    state: directory
+    #    path: "/home/vagrant/kubespray/inventory/{{ item }}"
+    #    owner: vagrant
+    #    group: vagrant
+    #  with_items:
+    #    - seongj
+
+    #- name: Copy Kubespray Sample
+    #  command: cp -r /home/vagrant/kubespray/inventory/sample/{{ item }}  /home/vagrant/kubespray/inventory/seongj
+    #  with_items:
+    #    - group_vars
+    #    - inventory.ini
+
+    #- name: Change group
+    #  command: "chown -R vagrant:vagrant /home/vagrant/kubespray"

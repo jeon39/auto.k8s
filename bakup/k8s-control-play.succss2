@@ -1,0 +1,48 @@
+---
+- name: Setup Ansible to each node
+  hosts: kube-master
+  connection: local
+  become: false
+  become_user: vagrant
+  gather_facts: no
+  vars:
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+    k8s_work_home: /home/vagrant/kubespray/inventory/my-k8s
+
+  tasks:
+    - debug: var=ansible_host
+
+    - name: ssh-keygen for root user
+      command: "ssh-keygen -f ~/.ssh/id_rsa -q -N ''"
+      ignore_errors: true
+      run_once: true
+
+    #- name: copy ssh key to each node, root user
+    #  command: sshpass -p {{ ansible_password }} ssh-copy-id -i ~/.ssh/id_rsa.pub vagrant@{{ item }} -f -o StrictHostKeyChecking=no
+    #  with_items:
+    #    - "{{ ansible_host }}"
+
+    - name: use flannel interface for k8s' network
+      lineinfile:
+        path: "{{ k8s_work_home }}/group_vars/k8s-cluster/k8s-net-flannel.yml"
+        regexp: '^# flannel_interface:$'
+        line: 'flannel_interface: enp0s8'
+
+    - name: enable addons helm metrics_server ingress_controller
+      lineinfile:
+        path: "{{ k8s_work_home }}/group_vars/k8s-cluster/addons.yml"
+        regexp: '{{ item.from }}'
+        line: '{{ item.to }}'
+        state: present
+      with_items:
+        - { from: 'helm_enabled: false', to: 'helm_enabled: true' }
+        - { from: 'metrics_server_enabled: false', to: 'metrics_server_enabled: true' }
+        - { from: 'ingress_nginx_enabled: false', to: 'ingress_nginx_enabled: true' }
+
+    - name: change proxy mode ipvs -> iptables
+      lineinfile:
+        path: "{{ k8s_work_home }}/group_vars/k8s-cluster/k8s-cluster.yml"
+        regexp: '^kube_proxy_mode: ipvs'
+        line: 'kube_proxy_mode: iptables'
+
