@@ -1,0 +1,11 @@
+# 파일무시
+# text.txt
+
+# 확장자 무시
+*.txt
+*.log
+*.zip
+*.exe
+
+# 폴더무시
+# test/ 
