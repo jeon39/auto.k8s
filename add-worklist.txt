@@ -1,0 +1,12 @@
+1. node01(k8s.master) UI 설치
+- ubuntu-desktop
+- chrome
+
+2. Dashboard 설치
+
+
+3. Airflow 설치
+- http://github.com/airflow-helm/charts 참고
+- helm repo add airflow-stable https://airflow-helm.github.com/charts
+- helm repo upate
+- helm install "airflow-dship" charts/airflow
