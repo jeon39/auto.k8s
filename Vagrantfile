@@ -5,6 +5,8 @@ Vagrant.configure("2") do |config|
     if ! grep -q node02 /etc/hosts; then sudo echo "192.168.2.23    node02" >> /etc/hosts; fi
     if ! grep -q node03 /etc/hosts; then sudo echo "192.168.2.24    node03" >> /etc/hosts; fi
     if ! grep -q node04 /etc/hosts; then sudo echo "192.168.2.25    node04" >> /etc/hosts; fi
+    if ! grep -q minio /etc/hosts; then sudo echo "192.168.2.101    minio" >> /etc/hosts; fi
+#    if ! grep -1 airflow /etc/hosts; then sudo echo "192.168.2.31    airflow" >> /etc/hosts; fi
     if ! id vagrant >  /dev/null 2>&1 ; then sudo useradd -G 10 -m -p $(openssl passwd -1 vagrant) vagrant; fi
     if [ ! -f /etc/sudoers.d/vagrant ] ; then sudo echo "vagrant    ALL=(ALL)    NOPASSWD: ALL" > /etc/sudoers.d/vagrant ; fi
   
@@ -23,8 +25,10 @@ Vagrant.configure("2") do |config|
   SCRIPT
 
   nodes_setup = <<-SCRIPT
+    # SSH auto login
     sed -i -e 's/PasswordAuthentication no/PasswordAuthentication yes/g' /etc/ssh/sshd_config
     sed -i -e 's/#PubkeyAuthentication yes/PubkeyAuthentication yes/g' /etc/ssh/sshd_config
+    sed -i -e 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/g' /etc/ssh/sshd_config
     service ssh restart
   SCRIPT
 
@@ -65,6 +69,7 @@ Vagrant.configure("2") do |config|
 			v.customize [ "modifyvm", :id, "--cpus", "2" ]
 			v.customize [ "modifyvm", :id, "--memory", "4096" ]
 		end
+               # node1.vm.synced_folder "/work/my_vagrant/iac-k8s/", "/vagrant"
                 node1.vm.provision:shell, :inline => nodes_setup
                 node1.vm.provision:shell, :inline => ubuntu_gui_setup
                 node1.vm.provision:shell, :inline => node_restart
@@ -96,6 +101,16 @@ Vagrant.configure("2") do |config|
                 end
                 node4.vm.provision:shell, :inline => nodes_setup
         end
+        config.vm.define "minio" do |minio|
+                minio.vm.hostname = "minio"
+                minio.vm.network "private_network", ip: "192.168.2.101"
+                minio.vm.synced_folder "/data", "/data"
+                minio.vm.provider "virtualbox" do |v|
+                        v.customize [ "modifyvm", :id, "--cpus", "1" ]
+                        v.customize [ "modifyvm", :id, "--memory", "2048" ]
+                end
+                minio.vm.provision:shell, :inline => nodes_setup
+        end
         config.vm.define "ansible" do |ansible|
                 ansible.vm.hostname = "ansible"
                 ansible.vm.network "private_network", ip: "192.168.2.21"
@@ -113,5 +128,4 @@ Vagrant.configure("2") do |config|
                 ansible.vm.provision:file, source: "k8s-kubectl-play.yml", destination: "k8s-kubectl-play.yml"
                 ansible.vm.provision:shell, inline: "cd ./kubespray && ansible-playbook -i ./inventory/my-k8s/hosts ../k8s-kubectl-play.yml"
         end
-
 end

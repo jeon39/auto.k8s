@@ -18,13 +18,13 @@
 
     - name: use flannel interface for k8s' network
       lineinfile:
-        path: "{{ k8s_work_home }}/group_vars/k8s-cluster/k8s-net-flannel.yml"
+        path: "{{ k8s_work_home }}/group_vars/k8s_cluster/k8s-net-flannel.yml"
         regexp: '^# flannel_interface:$'
         line: 'flannel_interface: enp0s8'
 
     - name: enable addons helm metrics_server ingress_controller
       lineinfile:
-        path: "{{ k8s_work_home }}/group_vars/k8s-cluster/addons.yml"
+        path: "{{ k8s_work_home }}/group_vars/k8s_cluster/addons.yml"
         regexp: '{{ item.from }}'
         line: '{{ item.to }}'
         state: present
@@ -33,9 +33,28 @@
         - { from: 'metrics_server_enabled: false', to: 'metrics_server_enabled: true' }
         - { from: 'ingress_nginx_enabled: false', to: 'ingress_nginx_enabled: true' }
 
+    - name: enable addons dashboard
+      lineinfile:
+        path: "{{ k8s_work_home }}/group_vars/k8s_cluster/addons.yml"
+        regexp: '{{ item.from }}'
+        line: '{{ item.to }}'
+        state: present
+      with_items:
+        - { from: '# dashboard_enabled: false', to: 'dashboard_enabled: true' }
+        - { from: 'local_volume_provisioner_enabled: false', to: 'local_volume_provisioner_enabled: true' }
+        - { from: 'cert_manager_enabled: false', to: 'cert_manager_enabled: true' }
+
+    - name: edit k8s-cluster.yml for dashboard
+      lineinfile:
+        path: "{{ k8s_work_home }}/group_vars/k8s_cluster/k8s-cluster.yml"
+        regexp: '{{ item.from }}'
+        line: '{{ item.to }}'
+        state: present
+      with_items:
+        - { from: '# kubeconfig_localhost: false', to: 'kubeconfig_localhost: true' }
+
     - name: change proxy mode ipvs -> iptables
       lineinfile:
-        path: "{{ k8s_work_home }}/group_vars/k8s-cluster/k8s-cluster.yml"
+        path: "{{ k8s_work_home }}/group_vars/k8s_cluster/k8s-cluster.yml"
         regexp: '^kube_proxy_mode: ipvs'
         line: 'kube_proxy_mode: iptables'
-

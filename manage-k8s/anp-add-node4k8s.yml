@@ -1,0 +1,50 @@
+---
+- name: Setup ansible control node
+  hosts: localhost
+  become: no
+  become_user: root
+  gather_facts: no
+  vars:
+    ansible_password: vagrant
+    ansible_python_interpreter: /usr/bin/python3
+
+  tasks:
+    - debug: var=ansible_host
+
+    - name: write inventory file(hosts)
+      become: yes
+      blockinfile:
+        path: /home/vagrant/kubespray/inventory/my-k8s/hosts
+        block: |
+          [all]
+          node01 ansible_host=node01 ip=192.168.2.22 etcd_member_name=etcd1
+          node02 ansible_host=node02 ip=192.168.2.23 etcd_member_name=etcd2
+          node03 ansible_host=node03 ip=192.168.2.24 etcd_member_name=etcd3
+          node04 ansible_host=node04 ip=192.168.2.25
+          minio ansible_host=minio ip=192.168.2.101
+
+          [kube-master]
+          node01
+         
+          [etcd]
+          node01
+          node02
+          node03
+          
+          [kube-node]
+          node02
+          node03
+          node04
+          minio
+          
+          [k8s-cluster:children]
+          kube-master
+          kube-node
+
+          [all:vars]
+          ansible_python_interpreter=/usr/bin/python3
+
+    - name: play ansbile for add k8s node
+      command: "ansible-playbook -b -i ~/kubespray/inventory/my-k8s/hosts ~/kubespray/scale.yml --limit  minio"
+      run_once: true
+

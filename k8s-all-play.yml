@@ -1,6 +1,8 @@
 ---
 - name: Setup Kubenetes to each node
   hosts: all
+  become: no
+  become_user: root
   connection: local
   serial: 1
   gather_facts: no
